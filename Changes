@@ -1,0 +1,6 @@
+Revision history for Perl extension Bio::Tools::LatticeProtein.
+
+0.01  Mon May 26 21:44:03 2003
+	- original version; created by h2xs 1.21 with options
+		-XA Bio::Tools::LatticeProtein
+
