@@ -1,5 +1,5 @@
 use Test;
-BEGIN { plan tests => 5 }
+BEGIN { plan tests => 6 }
 ok(1);
 
 use Data::Dumper;
@@ -8,18 +8,26 @@ use Bio::Tools::LatticeProtein;
 
 $lp = Bio::Tools::LatticeProtein->new(
 				      sequence => 'perlisnifty',
-				      cycle => 15,
+				      cycle => 100,
 				      mutdist => {
-					  end_rotation => 0.1,
-					  kink_jump    => 0.4,
-					  crankshaft   => 0.4,
-					  slithering   => 0.1,
+					  end_rotation => 0.2,
+					  kink_jump    => 0.3,
+					  crankshaft   => 0.3,
+					  slithering   => 0.2,
 				      },
 				      );
+
+$lp->create_pool;
+
+ok($lp->is_continuous(0), 1);
+
 $lp->run;
 
 ok($lp->{sequence}, 'PERLISNIFTY');
-ok({qw,-2 1 -3 1,}->{min(map{$lp->{pool}->[$_]->{energy}}0..$lp->{popsize})}, 1);
+
+#print min(map{$lp->{pool}->[$_]->{energy}}0..$lp->{popsize});
+
+ok({map{-$_=>1} 2..7}->{min(map{$lp->{pool}->[$_]->{energy}}0..$lp->{popsize})}, 1);
 ok($lp->{mutdist}->{kink_jump}, 0.5);
 
 ok($lp->result);

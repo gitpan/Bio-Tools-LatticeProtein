@@ -1,13 +1,43 @@
 package Bio::Tools::LatticeProtein;
 
 use strict;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 use Bio::Tools::LatticeProtein::Vars;
 use List::Util qw(shuffle);
+
+
+######################################################################
+# Utils
+######################################################################
+sub one_step    { [ $_[0]->[0]+$_[1]->[0], $_[0]->[1]+$_[1]->[1], $_[0]->[2]+$_[1]->[2] ] }
+sub is_pos_free { !$_[0]->{idx}->{join q/,/, @{$_[1]} } }
+sub pos_equal {$_[0]->[0]==$_[1]->[0] && $_[0]->[1]==$_[1]->[1] && $_[0]->[2]==$_[1]->[2]}
+sub possub { [ map{$_[0]->[$_]-$_[1]->[$_]} 0..2 ] }
+sub posadd { [ map{$_[0]->[$_]+$_[1]->[$_]} 0..2 ] }
+sub select_freepos {
+    my $fold = shift;
+    my $pos = shift;
+    foreach my $dir (shuffle @dir){
+	my $new_pos = one_step($pos, $dir);
+	return $new_pos if is_pos_free($fold, $new_pos);
+    }
+    undef;
+}
+
+sub is_dist_one {
+    my @dv = map { abs($_[0]->[$_] - $_[1]->[$_]) } 0..2;
+    my $t;
+    for(0..2){
+	$t+=$dv[$_];
+    }
+    $t>1 ? undef : 1;
+}
+
 
 ######################################################################
 # Initializing protein pool
 ######################################################################
+
 
 sub create_fold {
     my $pkg = shift;
@@ -16,10 +46,33 @@ sub create_fold {
     my %idx;
 
     my $cnt = 0;
-    foreach my $i (0..$pkg->{length}-1){
-	$idx{join(q/,/, $cnt, 0, 0)} = $pkg->{typearr}->[$i];
-	push @chain, [ $cnt, 0, 0 ];
-	$cnt++;
+    my $free = 0;
+    my $pos = [ 0, 0, 0 ];
+    my $new_pos;
+    my $i = 1;
+    my $succ = 0;
+    $idx{join(q/,/, @{$pos})} = $pkg->{typearr}->[$i];
+    push @chain, [ 0, 0, 0 ];
+
+    while($i<$pkg->{length}){
+	$succ = 0;
+	foreach my $dir (shuffle @dir){
+	    $new_pos = one_step($pos, $dir);
+	    if( !defined $idx{join q/,/,@{$new_pos}} ){
+		$idx{join(q/,/, @{$new_pos})} = $pkg->{typearr}->[$i];
+		push @chain, $new_pos;
+		$i++;
+		$pos = $new_pos;
+		$succ = 1;
+		last;
+	    }
+	}
+	if(!$succ) {
+	    $pos = pop @chain;
+	    delete $idx{join(q/,/, @{$pos})};
+	    $i--;
+	}
+
     }
 
     $pkg->{pool}->[$foldidx] = { chain => \@chain, idx => \%idx, energy => 0 };
@@ -32,6 +85,19 @@ sub create_pool {
     }
 }
 
+
+######################################################################
+# Checking the continuity
+######################################################################
+
+sub is_continuous {
+    my $pkg = shift;
+    my $fold = $pkg->{pool}->[shift];
+    foreach (0..$pkg->{length}-2){
+	return 0 unless is_dist_one($fold->{chain}->[$_], $fold->{chain}->[$_+1]);
+    }
+    1;
+}
 
 ######################################################################
 # Constructor
@@ -76,33 +142,6 @@ sub new {
     }, $pkg;
 }
 
-
-######################################################################
-# Utils
-######################################################################
-sub one_step    { [ $_[0]->[0]+$_[1]->[0], $_[0]->[1]+$_[1]->[1], $_[0]->[2]+$_[1]->[2] ] }
-sub is_pos_free { !$_[0]->{idx}->{join q/,/, @{$_[1]} } }
-sub pos_equal {$_[0]->[0]==$_[1]->[0] && $_[0]->[1]==$_[1]->[1] && $_[0]->[2]==$_[1]->[2]}
-sub possub { [ map{$_[0]->[$_]-$_[1]->[$_]} 0..2 ] }
-sub posadd { [ map{$_[0]->[$_]+$_[1]->[$_]} 0..2 ] }
-sub select_freepos {
-    my $fold = shift;
-    my $pos = shift;
-    foreach my $dir (shuffle @dir){
-	my $new_pos = one_step($pos, $dir);
-	return $new_pos if is_pos_free($fold, $new_pos);
-    }
-    undef;
-}
-
-sub is_dist_one {
-    my @dv = map { abs($_[0]->[$_] - $_[1]->[$_]) } 0..2;
-    my $t;
-    for(0..2){
-	$t+=$dv[$_];
-    }
-    $t>1 ? undef : 1;
-}
 
 ######################################################################
 # Mutation strategies

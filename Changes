@@ -4,3 +4,6 @@ Revision history for Perl extension Bio::Tools::LatticeProtein.
 	- original version; created by h2xs 1.21 with options
 		-XA Bio::Tools::LatticeProtein
 
+0.02  Thu,  3 Jul 2003 21:37:29 +0800
+	- is_continuous() add
+	- initialization with random foldings added
